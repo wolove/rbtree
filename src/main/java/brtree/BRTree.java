@@ -49,6 +49,7 @@ public class BRTree {
         StringBuilder sb = new StringBuilder();
         for (Node n : nods) {
             sb.append(n.value);
+            sb.append("(" + n.color + ")");
             sb.append("->");
         }
         return sb.toString();
@@ -96,6 +97,8 @@ public class BRTree {
         if (this.root == null) {
             this.root = node;
             this.root.parent = Node.getNIL(null);
+            this.root.color = Node.COLOR.BLACK;
+            member.add(node);
             return;
         }
         //1.找到插入的节点
@@ -116,12 +119,67 @@ public class BRTree {
         } else {
             curNode.addRight(node);
         }
+
+        member.add(node);
         //进行红黑树调整
-        BR_INSERT_FIXUP(node);
+        if (node.parent.color == Node.COLOR.RED) {
+            BR_INSERT_FIXUP(node);
+        }
     }
 
     public void BR_INSERT_FIXUP(Node node) {
-        //1.如果node是parent的左子树,且
+        Node curNode = node;
+
+        while (!Node.isNIL(curNode)) {
+            if (curNode.parent.color == Node.COLOR.BLACK) {
+                return;
+            }
+            if (curNode == this.root) {
+                curNode.color = Node.COLOR.BLACK;
+                return;
+            }
+            //如果添加的节点在祖父看来是左边
+            if (curNode.parent == curNode.parent.parent.left) {
+                Node uncle = curNode.parent.parent.right;
+                //1.如果node的parent和uncle都是红色，将parent和uncle变为黑色，祖父变为红色，当前节点变为祖父
+                if (uncle.color == Node.COLOR.RED) {
+                    curNode.parent.color = Node.COLOR.BLACK;
+                    uncle.color = Node.COLOR.BLACK;
+                    curNode.parent.parent.color = Node.COLOR.RED;
+                    curNode = node.parent.parent;
+                    continue;
+                } else if (curNode == curNode.parent.right) {
+                //2.如果node的parent是红色，uncle是黑色，且node是parent的右孩子
+                    //红黑树的调整算法是希望红红在同一边，这样在对祖父进行旋转着色后就是一个合法的红黑树而不需要进一步的调整，故该情况要求将红色节点通过旋转的方式归到长高的那一边
+                    //2.1以node.parent进行左旋,并以其为新的curNode进行红黑树调整
+                    curNode = curNode.parent;
+                    LEFT_ROTATE(curNode);
+                } else {
+                //3.红红已经在同一边了，且uncle仍是黑色或NIL,对祖父进行右旋并着色
+                    curNode.parent.color = Node.COLOR.BLACK;
+                    curNode.parent.parent.color = Node.COLOR.RED;
+                    curNode = curNode.parent.parent;
+                    RIGHT_ROTATE(curNode);
+                }
+            }else if(curNode.parent == curNode.parent.parent.right){
+                Node uncle = curNode.parent.parent.left;
+                if (uncle.color == Node.COLOR.RED) {
+                    curNode.parent.color = Node.COLOR.BLACK;
+                    uncle.color = Node.COLOR.BLACK;
+                    curNode.parent.parent.color = Node.COLOR.RED;
+                    curNode = curNode.parent.parent;
+                    continue;
+                } else if (curNode == curNode.parent.left) {
+                    curNode = curNode.parent;
+                    RIGHT_ROTATE(curNode);
+                }else{
+                    curNode.parent.parent.color = Node.COLOR.RED;
+                    curNode.parent.color = Node.COLOR.BLACK;
+                    curNode = curNode.parent.parent;
+                    LEFT_ROTATE(curNode);
+                }
+            }
+        }
     }
 
     /**
@@ -187,19 +245,23 @@ public class BRTree {
     public static void main(String[] args) {
         BRTree tree = new BRTree();
         Node root = new Node(-1);
-        tree.root = root;
 
         Node rootLeft = new Node(12);
         Node rootRight = new Node(23);
         Node child = new Node(3993);
-        root.addLeft(rootLeft);
-        root.addRight(rootRight);
-        rootLeft.addLeft(child);
+        Node gc = new Node(-3);
+        tree.add(root);
+        tree.add(rootLeft);
+        tree.add(rootRight);
+        tree.add(child);
+        tree.add(gc);
 
         System.out.println(tree.inOrderTraversalToString());
 
         System.out.println(tree.root.value);
         tree.LEFT_ROTATE(root);
+        System.out.println(tree.root.value);
+        tree.RIGHT_ROTATE(tree.root);
         System.out.println(tree.root.value);
 
     }
