@@ -23,7 +23,7 @@ public class BRTree {
      * @return
      */
     public static Node getSuccessor(BRTree tree, Node node) {
-        if (node == null) {
+        if (node == null||!tree.member.contains(node)) {
             return null;
         }
         if (node == tree.root) {
@@ -182,6 +182,20 @@ public class BRTree {
         }
     }
 
+
+    public void delete(Node node) {
+        if (!member.contains(node)) {
+            return;
+        }
+
+        Node delNode;
+        if (Node.isNIL(node.left) || Node.isNIL(node.right)) {
+            delNode = node;
+        }else{
+            delNode = getSuccessor(this, node);
+        }
+
+    }
     /**
      *                A                  A
      *               /                  /
