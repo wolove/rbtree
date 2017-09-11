@@ -8,7 +8,7 @@ import java.util.List;
  * Created by Administrator on 2017/09/04 0004.
  */
 public class BRTree {
-    private List<Node> member = new ArrayList<>();
+    private List<String> member = new ArrayList<>();
 
     private Node root;
 
@@ -23,16 +23,16 @@ public class BRTree {
      * @return
      */
     public static Node getSuccessor(BRTree tree, Node node) {
-        if (node == null||!tree.member.contains(node)) {
+        if (node == null || !tree.member.contains(node.id)) {
             return null;
         }
         if (node == tree.root) {
             return tree.root.right;
         }
         //有右子树
-        if (node.right != null) {
+        if (!Node.isNIL(node.right)) {
             Node curNode = node.right;
-            while (curNode.left != null) {
+            while (!Node.isNIL(node.left)) {
                 curNode = curNode.left;
                 continue;
             }
@@ -49,7 +49,11 @@ public class BRTree {
         StringBuilder sb = new StringBuilder();
         for (Node n : nods) {
             sb.append(n.value);
-            sb.append("(" + n.color + ")");
+            sb.append("(" + n.color);
+            if (n == root) {
+                sb.append("[root]");
+            }
+            sb.append(")");
             sb.append("->");
         }
         return sb.toString();
@@ -91,14 +95,14 @@ public class BRTree {
     }
 
     public void add(Node node) {
-        if (node == null || Node.isNIL(node)||member.contains(node)) {
+        if (node == null || Node.isNIL(node) || member.contains(node.id)) {
             return;
         }
-        if (this.root == null) {
+        if (this.root == null || Node.isNIL(root)) {
             this.root = node;
             this.root.parent = Node.getNIL(null);
             this.root.color = Node.COLOR.BLACK;
-            member.add(node);
+            member.add(node.id);
             return;
         }
         //1.找到插入的节点
@@ -120,7 +124,7 @@ public class BRTree {
             curNode.addRight(node);
         }
 
-        member.add(node);
+        member.add(node.id);
         //进行红黑树调整
         if (node.parent.color == Node.COLOR.RED) {
             BR_INSERT_FIXUP(node);
@@ -149,19 +153,19 @@ public class BRTree {
                     curNode = node.parent.parent;
                     continue;
                 } else if (curNode == curNode.parent.right) {
-                //2.如果node的parent是红色，uncle是黑色，且node是parent的右孩子
+                    //2.如果node的parent是红色，uncle是黑色，且node是parent的右孩子
                     //红黑树的调整算法是希望红红在同一边，这样在对祖父进行旋转着色后就是一个合法的红黑树而不需要进一步的调整，故该情况要求将红色节点通过旋转的方式归到长高的那一边
                     //2.1以node.parent进行左旋,并以其为新的curNode进行红黑树调整
                     curNode = curNode.parent;
                     LEFT_ROTATE(curNode);
                 } else {
-                //3.红红已经在同一边了，且uncle仍是黑色或NIL,对祖父进行右旋并着色
+                    //3.红红已经在同一边了，且uncle仍是黑色或NIL,对祖父进行右旋并着色
                     curNode.parent.color = Node.COLOR.BLACK;
                     curNode.parent.parent.color = Node.COLOR.RED;
                     curNode = curNode.parent.parent;
                     RIGHT_ROTATE(curNode);
                 }
-            }else if(curNode.parent == curNode.parent.parent.right){
+            } else if (curNode.parent == curNode.parent.parent.right) {
                 Node uncle = curNode.parent.parent.left;
                 if (uncle.color == Node.COLOR.RED) {
                     curNode.parent.color = Node.COLOR.BLACK;
@@ -172,7 +176,7 @@ public class BRTree {
                 } else if (curNode == curNode.parent.left) {
                     curNode = curNode.parent;
                     RIGHT_ROTATE(curNode);
-                }else{
+                } else {
                     curNode.parent.parent.color = Node.COLOR.RED;
                     curNode.parent.color = Node.COLOR.BLACK;
                     curNode = curNode.parent.parent;
@@ -184,31 +188,127 @@ public class BRTree {
 
 
     public void delete(Node node) {
-        if (!member.contains(node)) {
+
+        if (!member.contains(node.id)) {
             return;
         }
 
-        Node delNode;
-        if (Node.isNIL(node.left) || Node.isNIL(node.right)) {
+        boolean hasTwoChild = false;
+        Node successorNode = null;
+        Node delNode = null;
+        if (!Node.isNIL(node.left) && !Node.isNIL(node.right)) {
+            successorNode = getSuccessor(this, node);
+            hasTwoChild = true;
+            delNode = successorNode;
+        }
+
+        //有两个孩子的节点的后继节点是不会有左孩子的
+        if (hasTwoChild) {
+            if (node == root) {
+                successorNode.parent = root.parent;
+                root = successorNode;
+                node.left.parent = successorNode;
+                successorNode.left = node.left;
+            } else {
+                successorNode.right.parent = successorNode.parent;
+                successorNode.parent.left = successorNode.right;
+
+                successorNode.parent = node.parent;
+                if (node.parent.left == node) {
+                    node.parent.left = successorNode;
+                } else {
+                    node.parent.right = successorNode;
+                }
+
+                successorNode.left = node.left;
+                node.left.parent = successorNode;
+
+                successorNode.right = node.right;
+                node.right.parent = successorNode;
+            }
+        } else {
             delNode = node;
+            successorNode = Node.isNIL(node.left) ? node.right : node.left;
+
+            successorNode.parent = node.parent;
+            if (node.parent.left == node) {
+                node.parent.left = successorNode;
+            } else {
+                node.parent.right = successorNode;
+            }
+        }
+        //清除被删掉节点的所有引用
+        node.clearReference();
+        member.remove(node.id);
+
+        if (delNode.color == Node.COLOR.BLACK) {
+            BR_DELETE_FIXUP();
+        }
+    }
+
+    public void delete2edition(Node node) {
+        if (!member.contains(node.id)) {
+            return;
+        }
+
+        Node realDelNode ;
+        if (Node.isNIL(node.left) || Node.isNIL(node.right)) {
+            realDelNode = node;
         }else{
-            delNode = getSuccessor(this, node);
+            realDelNode = getSuccessor(this, node);
+        }
+
+        Node movedNode;
+        if (!Node.isNIL(realDelNode.left)) {
+            movedNode = realDelNode.left;
+        }else{
+            movedNode = realDelNode.right;
+        }
+
+        if (Node.isNIL(realDelNode.parent)) {
+            //这种情况只对应删除的节点是根且根只有一个孩子或没有孩子
+            root = movedNode;
+        } else if (realDelNode.parent.left == realDelNode) {
+            realDelNode.parent.left = movedNode;
+        }else{
+            realDelNode.parent.right = movedNode;
+        }
+        movedNode.parent = realDelNode.parent;
+
+        member.remove(node.id);
+        //将node进行逻辑删除，将realDelNode的value和id赋给node
+        if (node != realDelNode) {
+            node.value = realDelNode.value;
+            node.id = realDelNode.id;
+        }
+        realDelNode.clearReference();
+
+        if (movedNode.color == Node.COLOR.BLACK) {
+            BR_DELETE_FIXUP();
         }
 
     }
+
+    private void BR_DELETE_FIXUP() {
+        //TODO 恢复红黑树性质
+    }
+
     /**
-     *                A                  A
-     *               /                  /
-     *  ->对C左旋   C         ==>      E
+     * <pre>
+     *               A                  A
+     *              /                  /
+     * ->对C左旋    C         ==>      E
      *            /  \               /
      *           B    E             C
      *               /             / \
-     *             D              B   D
+     *              D             B   D
+     * </pre>
+     *
      * @param node
      */
     public void LEFT_ROTATE(Node node) {
         //没有右子树无法左旋
-        if (node == null || Node.isNIL(node) || Node.isNIL(node.right)||!member.contains(node)) {
+        if (node == null || Node.isNIL(node) || Node.isNIL(node.right) || !member.contains(node.id)) {
             return;
         }
 
@@ -219,11 +319,11 @@ public class BRTree {
 
         nodeRight.parent = node.parent;
         //如果node本身是root,将右孩子变为root
-        if(Node.isNIL(node.parent)){
+        if (Node.isNIL(node.parent)) {
             this.root = nodeRight;
         } else if (node == node.parent.left) {
             node.parent.left = nodeRight;
-        }else{
+        } else {
             node.parent.right = nodeRight;
         }
         //将node挂在nodeRight下
@@ -233,8 +333,8 @@ public class BRTree {
 
     public void RIGHT_ROTATE(Node node) {
         //没有左子树无法右旋
-        if (node == null || Node.isNIL(node) || Node.isNIL(node.left) || !member.contains(node)) {
-            return ;
+        if (node == null || Node.isNIL(node) || Node.isNIL(node.left) || !member.contains(node.id)) {
+            return;
         }
 
         Node nodeLeft = node.left;
@@ -272,12 +372,8 @@ public class BRTree {
 
         System.out.println(tree.inOrderTraversalToString());
 
-        System.out.println(tree.root.value);
-        tree.LEFT_ROTATE(root);
-        System.out.println(tree.root.value);
-        tree.RIGHT_ROTATE(tree.root);
-        System.out.println(tree.root.value);
-
+        tree.delete2edition(tree.root);
+        System.out.println(tree.inOrderTraversalToString());
     }
 
 }

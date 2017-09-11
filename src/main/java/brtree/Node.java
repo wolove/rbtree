@@ -1,9 +1,12 @@
 package brtree;
 
+import java.util.UUID;
+
 /**
  * Created by Administrator on 2017/09/04 0004.
  */
 public class Node {
+    public String id;
     public Node parent;
     public Node left;
     public Node right;
@@ -11,7 +14,7 @@ public class Node {
     public COLOR color;
 
     public Node() {
-
+        id = UUID.randomUUID().toString();
     }
 
     /**
@@ -20,6 +23,7 @@ public class Node {
      * @param value
      */
     public Node(int value) {
+        this();
         left = getNIL(this);
         right = getNIL(this);
         this.value = value;
@@ -54,8 +58,7 @@ public class Node {
         return true;
     }
 
-    private static class NIL extends Node{
-
+    private static class NIL extends Node {
     }
 
     public static NIL getNIL(Node parent) {
@@ -64,8 +67,22 @@ public class Node {
         return nil;
     }
 
+    public void clearReference() {
+        this.left = null;
+        this.right = null;
+        this.parent = null;
+    }
+
     public static boolean isNIL(Node node) {
         return node instanceof NIL;
     }
 
+    public void from(Node node) {
+        this.id = node.id;
+        this.parent = node.parent;
+        this.left = node.left;
+        this.right = node.right;
+        this.value = node.value;
+        this.color = node.color;
+    }
 }
