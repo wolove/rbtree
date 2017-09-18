@@ -187,81 +187,81 @@ public class BRTree {
     }
 
 
-    public void delete(Node node) {
-
-        if (!member.contains(node.id)) {
-            return;
-        }
-
-        boolean hasTwoChild = false;
-        Node successorNode = null;
-        Node delNode = null;
-        if (!Node.isNIL(node.left) && !Node.isNIL(node.right)) {
-            successorNode = getSuccessor(this, node);
-            hasTwoChild = true;
-            delNode = successorNode;
-        }
-
-        //有两个孩子的节点的后继节点是不会有左孩子的
-        if (hasTwoChild) {
-            if (node == root) {
-                successorNode.parent = root.parent;
-                root = successorNode;
-                node.left.parent = successorNode;
-                successorNode.left = node.left;
-            } else {
-                successorNode.right.parent = successorNode.parent;
-                successorNode.parent.left = successorNode.right;
-
-                successorNode.parent = node.parent;
-                if (node.parent.left == node) {
-                    node.parent.left = successorNode;
-                } else {
-                    node.parent.right = successorNode;
-                }
-
-                successorNode.left = node.left;
-                node.left.parent = successorNode;
-
-                successorNode.right = node.right;
-                node.right.parent = successorNode;
-            }
-        } else {
-            delNode = node;
-            successorNode = Node.isNIL(node.left) ? node.right : node.left;
-
-            successorNode.parent = node.parent;
-            if (node.parent.left == node) {
-                node.parent.left = successorNode;
-            } else {
-                node.parent.right = successorNode;
-            }
-        }
-        //清除被删掉节点的所有引用
-        node.clearReference();
-        member.remove(node.id);
-
-        if (delNode.color == Node.COLOR.BLACK) {
-            BR_DELETE_FIXUP();
-        }
-    }
+//    public void delete(Node node) {
+//
+//        if (!member.contains(node.id)) {
+//            return;
+//        }
+//
+//        boolean hasTwoChild = false;
+//        Node successorNode = null;
+//        Node delNode = null;
+//        if (!Node.isNIL(node.left) && !Node.isNIL(node.right)) {
+//            successorNode = getSuccessor(this, node);
+//            hasTwoChild = true;
+//            delNode = successorNode;
+//        }
+//
+//        //有两个孩子的节点的后继节点是不会有左孩子的
+//        if (hasTwoChild) {
+//            if (node == root) {
+//                successorNode.parent = root.parent;
+//                root = successorNode;
+//                node.left.parent = successorNode;
+//                successorNode.left = node.left;
+//            } else {
+//                successorNode.right.parent = successorNode.parent;
+//                successorNode.parent.left = successorNode.right;
+//
+//                successorNode.parent = node.parent;
+//                if (node.parent.left == node) {
+//                    node.parent.left = successorNode;
+//                } else {
+//                    node.parent.right = successorNode;
+//                }
+//
+//                successorNode.left = node.left;
+//                node.left.parent = successorNode;
+//
+//                successorNode.right = node.right;
+//                node.right.parent = successorNode;
+//            }
+//        } else {
+//            delNode = node;
+//            successorNode = Node.isNIL(node.left) ? node.right : node.left;
+//
+//            successorNode.parent = node.parent;
+//            if (node.parent.left == node) {
+//                node.parent.left = successorNode;
+//            } else {
+//                node.parent.right = successorNode;
+//            }
+//        }
+//        //清除被删掉节点的所有引用
+//        node.clearReference();
+//        member.remove(node.id);
+//
+//        if (delNode.color == Node.COLOR.BLACK) {
+//            BR_DELETE_FIXUP();
+//        }
+//    }
 
     public void delete2edition(Node node) {
         if (!member.contains(node.id)) {
             return;
         }
 
-        Node realDelNode ;
+        Node realDelNode;
         if (Node.isNIL(node.left) || Node.isNIL(node.right)) {
             realDelNode = node;
-        }else{
+        } else {
             realDelNode = getSuccessor(this, node);
         }
 
         Node movedNode;
         if (!Node.isNIL(realDelNode.left)) {
             movedNode = realDelNode.left;
-        }else{
+        } else {
             movedNode = realDelNode.right;
         }
 
@@ -270,7 +270,7 @@ public class BRTree {
             root = movedNode;
         } else if (realDelNode.parent.left == realDelNode) {
             realDelNode.parent.left = movedNode;
-        }else{
+        } else {
             realDelNode.parent.right = movedNode;
         }
         movedNode.parent = realDelNode.parent;
@@ -284,13 +284,88 @@ public class BRTree {
         realDelNode.clearReference();
 
         if (movedNode.color == Node.COLOR.BLACK) {
-            BR_DELETE_FIXUP();
+            BR_DELETE_FIXUP(movedNode);
         }
 
     }
 
-    private void BR_DELETE_FIXUP() {
+    /**
+     * node 的选择依据：
+     * 1.通过该node的黑节点少了一个
+     * 2.以该node为起点的所有路径满足红黑树的所有性质
+     * @param node
+     */
+    private void BR_DELETE_FIXUP(Node node) {
+        Node curNode = node;
         //TODO 恢复红黑树性质
+        while (!Node.isNIL(curNode)) {
+            if (Node.isNIL(curNode.parent)) {
+                curNode.color = Node.COLOR.BLACK;
+                return;
+            }
+
+            if (curNode.color == Node.COLOR.BLACK) {
+                if (curNode.parent.left == curNode) {
+                    curNode = fixLeftCase(curNode);
+                } else {
+                    curNode = fixRightCase(curNode);
+                }
+            } else {//如果该节点是红色，直接换成黑色就能将所有性质恢复
+                curNode.color = Node.COLOR.BLACK;
+                break;
+            }
+        }
+    }
+
+    /**
+     * 当前节点是父节点的左孩子的情况
+     */
+    private Node fixLeftCase(Node node) {
+        Node brother = node.parent.right;
+        if (brother.color == Node.COLOR.RED) {//node = 黑,brother = 红, parent=黑 这种情况下的思路是，如何在不破坏右子树红黑性质的情况下，将当前节点的情况转化成brother为黑色的情况（因为可以成功恢复的情况brother都为黑色)
+            //对父节点进行左旋,并置换brother和父节点的颜色，这可以保证通过原右子树的所有路径黑高度不变
+            node.parent.color = Node.COLOR.RED;
+            brother.color = Node.COLOR.BLACK;
+            LEFT_ROTATE(node.parent);
+        } else{//node = 黑,brother = 黑
+            if (brother.left.color == Node.COLOR.BLACK && brother.right.color == Node.COLOR.BLACK) {//brother.left = 黑 brother.right = 黑
+                if(brother.parent.color == Node.COLOR.BLACK) {//parent = 黑
+                    //这种情况下将brother的颜色设置为红色，curNode 变为parent,这样parent之下的子树满足红黑性质,但通过parent节点的路径都少一个黑节点
+                    brother.color = Node.COLOR.RED;
+                    return node.parent;
+                }else{//parent = 红
+                    //这种情况下互换brother和parent的颜色，所有事情都变得平衡了起来:通过brother的路径黑高度不变，而node的父变成了黑色，黑高度+1,QED
+                    brother.color = Node.COLOR.RED;
+                    brother.color = Node.COLOR.BLACK;
+                    return Node.getNIL(null);//返回nil停止循环
+                }
+            }
+
+            if (brother.right.color == Node.COLOR.RED) {//brother.right = 黑, 不管brother.left 和 brother.parent的颜色,这里的操作都能解决
+                //互换brother和brother.parent的颜色，对parent进行左旋，此时通过brother.left的黑高度不变,并且由于node多了一个黑父节点，左边的红黑性质已恢复
+                Node.COLOR temp = brother.parent.color;
+                brother.parent.color = brother.color;
+                brother.color = temp;
+                LEFT_ROTATE(brother.parent);
+                //但是右边的红黑性质被破坏了，brother.right为红且通过它的路径少了一个黑色，此时只要把brother.right涂黑就完成了
+                brother.right.color = Node.COLOR.BLACK;
+                return Node.getNIL(null);
+            }else if(brother.left.color == Node.COLOR.RED){//brother.left = 红,brother.right = 黑
+                //这种情况无法直接求解，但是可以通过旋转把情况转换为上一种情况，而上一种情况可以直接返回;
+                //互换brother.left 和brother的颜色
+                brother.color = Node.COLOR.RED;
+                brother.left.color = Node.COLOR.BLACK;
+                RIGHT_ROTATE(brother);
+            }
+        }
+        return node;
+    }
+
+    /**
+     * 当前节点是父节点的右孩子的情况
+     */
+    private Node fixRightCase(Node node) {
+        return null;
     }
 
     /**
